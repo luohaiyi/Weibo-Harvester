@@ -189,7 +189,7 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml --profile mysql up -d
 # 含 MongoDB
 docker compose -f docker-compose.prod.yml --profile mongo up -d
-# 含 MySQL + MongoDB（等同于旧版全部启动）
+# 含 MySQL + MongoDB
 docker compose -f docker-compose.prod.yml --profile db up -d
 
 # 4. 访问 GUI
@@ -912,7 +912,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ## 许可证与致谢
 
-- 本项目的 3 个爬虫核心模块基于 [dataabc/weibo](https://github.com/dataabc/weibo) 系列开源工具改编：
+- 本项目的 3 个爬虫核心模块基于 [dataabc/weibo](https://github.com/dataabc/) 系列开源工具改编：
   - weibo-crawler 基于 [dataabc/weibo-crawler](https://github.com/dataabc/weibo-crawler)
   - weibo-follow 基于 [dataabc/weibo-follow](https://github.com/dataabc/weibo-follow)
   - weibo-search 基于 [dataabc/weibo-search](https://github.com/dataabc/weibo-search)
