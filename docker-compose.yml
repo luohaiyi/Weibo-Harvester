@@ -1,0 +1,129 @@
+# Weibo Harvester Docker Compose
+# 开发阶段使用 volumes 挂载实现热更新
+
+
+
+
+
+
+services:
+  # ============================================================
+  # MySQL 8.0 数据库服务
+  # ============================================================
+  mysql:
+    image: mysql:8.0
+    container_name: weibo-mysql
+    profiles:
+      - mysql
+      - db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD:-weibo_harvester_password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-weibo_harvester}
+      - TZ=${TZ:-Asia/Shanghai}
+    volumes:
+      # MySQL 数据持久化
+      - ./data/mysql:/var/lib/mysql
+    ports:
+      - "${MYSQL_EXTERNAL_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - weibo-harvester-network
+
+  # ============================================================
+  # MongoDB 7.0 数据库服务
+  # ============================================================
+  mongo:
+    image: mongo:7.0
+    container_name: weibo-mongo
+    profiles:
+      - mongo
+      - db
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+    volumes:
+      # MongoDB 数据持久化
+      - ./data/mongo:/data/db
+      - ./data/mongo/config:/data/configdb
+    ports:
+      - "${MONGO_EXTERNAL_PORT:-27017}:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - weibo-harvester-network
+
+  # ============================================================
+  # 微博采集 + GUI 管理后台
+  # ============================================================
+  weibo-harvester:
+    image: weiboharvester:1.3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weibo-harvester
+    volumes:
+      # 挂载本地代码目录，实现热更新（改代码无需重新 build）
+      - ./tools/dataabc/weibo-crawler:/app/weibo-crawler
+      - ./tools/dataabc/weibo-follow:/app/weibo-follow
+      - ./tools/dataabc/weibo-search:/app/weibo-search
+      - ./gui-web:/app/gui-web
+      - ./start.py:/app/start.py
+      - ./menu.sh:/app/menu.sh
+      - ./data:/app/data
+      # SQLite 数据库专用挂载
+      - ./data/sqlite:/app/data/sqlite
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    ports:
+      - "${FLASK_PORT:-5100}:${FLASK_PORT:-5100}"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - FLASK_PORT=${FLASK_PORT:-5100}
+      - FLASK_HOST=${FLASK_HOST:-0.0.0.0}
+      - FLASK_DEBUG=${FLASK_DEBUG:-1}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      # 时区配置（默认与项目设置保持一致）
+      - TZ=${TZ:-Asia/Shanghai}
+      # Flask 安全配置
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
+      - API_TOKEN=${API_TOKEN:-}
+      # SQLite 配置
+      - SQLITE_DATA_DIR=${SQLITE_DATA_DIR:-/app/data/sqlite}
+      # MongoDB 配置
+      - MONGODB_URI=${MONGODB_URI:-mongodb://weibo-mongo:27017/}
+      # MySQL 配置
+      - MYSQL_HOST=${MYSQL_HOST:-weibo-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-root}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-weibo_harvester_password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-weibo_harvester}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${FLASK_PORT:-5100}/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
+      mongo:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+    networks:
+      - weibo-harvester-network
+
+networks:
+  weibo-harvester-network:
+    driver: bridge

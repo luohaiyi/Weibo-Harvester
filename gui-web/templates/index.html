@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微博爬虫 GUI</title>
+    <!-- CDN 资源 (可通过 USE_CDN 变量切换: true=CDN, false=本地) -->
+    <script>
+        var USE_CDN = false;
+    </script>
+    <!-- Element Plus CSS (unpkg: element-plus@2.3.14/dist/index.css) -->
+    <link rel="stylesheet" href="/static/element-plus/element-plus@2.3.14.index.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <!-- Vue 3 -->
+    <script>
+        var vueUrl = USE_CDN ? 'https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js' : '/static/js/vue@3.4.21.global.prod.js';
+        document.write('<script src="' + vueUrl + '"><\/script>');
+    </script>
+    
+    <!-- Element Plus JS -->
+    <script>
+        var epJs = USE_CDN ? 'https://unpkg.com/element-plus@2.3.14/dist/index.full.js' : '/static/element-plus/element-plus@2.3.14.index.full.js';
+        var iconJs = USE_CDN ? 'https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js' : '/static/js/element-plusiconsvue@2.3.1.index.iife.min.js';
+        document.write('<script src="' + epJs + '"><\/script>');
+        document.write('<script src="' + iconJs + '"><\/script>');
+    </script>
+    
+    <!-- Element Plus 中文语言包 -->
+    <script>
+        var localeJs = USE_CDN ? 'https://unpkg.com/element-plus@2.3.14/dist/locale/zh-cn.js' : '/static/element-plus/zh-cn.js';
+        document.write('<script src="' + localeJs + '"><\/script>');
+    </script>
+    
+    <!-- Axios -->
+    <script>
+        var axiosUrl = USE_CDN ? 'https://unpkg.com/axios@1.6.8/dist/browser/axios.min.js' : '/static/js/axios@1.6.8.browser.axios.min.js';
+        document.write('<script src="' + axiosUrl + '"><\/script>');
+    </script>
+    <script>
+        // 错误捕获
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('JavaScript Error:', msg, 'Line:', line);
+            document.write('<div style="color:red;padding:20px;font-size:16px;">JavaScript Error: ' + msg + '<br>Line: ' + line + '</div>');
+            return true;
+        };
+    </script>
+</head>
+<body>
+    <div id="app">
+        <el-container class="main-container">
+            <!-- 顶部导航 -->
+            <el-header class="app-header">
+                <div class="logo">
+                    <el-icon size="24"><Collection></Collection></el-icon>
+                    <span style="white-space:nowrap;">微博爬虫 GUI</span>
+                </div>
+                <el-menu
+                    :default-active="activeMenu"
+                    mode="horizontal"
+                    @select="handleMenuSelect"
+                    class="top-menu"
+                    background-color="#409EFF"
+                    text-color="#fff"
+                    active-text-color="#ffd04b"
+                >
+                    <el-menu-item index="home">
+                        <el-icon><House></House></el-icon>
+                        <span>主页</span>
+                    </el-menu-item>
+                    <el-menu-item index="weibo-crawler">
+                        <el-icon><Document></Document></el-icon>
+                        <span>weibo-crawler</span>
+                    </el-menu-item>
+                    <el-menu-item index="weibo-follow">
+                        <el-icon><User></User></el-icon>
+                        <span>weibo-follow</span>
+                    </el-menu-item>
+                    <el-menu-item index="weibo-search">
+                        <el-icon><Search></Search></el-icon>
+                        <span>weibo-search</span>
+                    </el-menu-item>
+                    <el-menu-item index="logs">
+                        <el-icon><List></List></el-icon>
+                        <span>日志管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="settings">
+                        <el-icon><Setting></Setting></el-icon>
+                        <span>全局设置</span>
+                    </el-menu-item>
+                </el-menu>
+            </el-header>
+
+            <!-- 主内容区 -->
+            <el-main class="main-content">
+                <!-- 主页 -->
+                <div v-if="activeMenu === 'home'" class="page-content">
+                    <el-row :gutter="20">
+                        <el-col :span="24">
+                            <h2>功能导航</h2>
+                        </el-col>
+                    </el-row>
+                    <el-row :gutter="20" class="feature-cards">
+                        <el-col :span="8" v-for="item in featureCards" :key="item.key">
+                            <el-card class="feature-card" shadow="hover" @click="navigateTo(item.key)">
+                                <div class="card-content">
+                                    <el-icon :size="48" :color="item.color">
+                                        <component :is="item.icon" ></component>
+                                    </el-icon>
+                                    <h3>{{ item.title }}</h3>
+                                    <p>{{ item.desc }}</p>
+                                </div>
+                            </el-card>
+                        </el-col>
+                    </el-row>
+
+                    <!-- 历史记录 -->
+                    <el-row :gutter="20" class="history-section">
+                        <el-col :span="24">
+                            <el-card>
+                                <template #header>
+                                    <div class="card-header">
+                                        <span>运行历史</span>
+                                        <div class="header-actions">
+                                            <el-select v-model="historyFilter.type" placeholder="全部类型" clearable size="small" style="width: 120px; margin-right: 10px;">
+                                                <el-option label="weibo-crawler" value="weibo-crawler"></el-option>
+                                                <el-option label="weibo-follow" value="weibo-follow" ></el-option>
+                                                <el-option label="weibo-search" value="weibo-search" ></el-option>
+                                            </el-select>
+                                            <el-select v-model="historyFilter.status" placeholder="全部状态" clearable size="small" style="width: 120px; margin-right: 10px;">
+                                                <el-option label="运行中" value="running"></el-option>
+                                                <el-option label="成功" value="success"></el-option>
+                                                <el-option label="失败" value="failed"></el-option>
+                                                <el-option label="已停止" value="stopped"></el-option>
+                                            </el-select>
+                                            <el-button type="danger" size="small" @click="clearAllHistory" :disabled="!filteredHistory.length">
+                                                清空历史
+                                            </el-button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <el-table :data="paginatedHistory" style="width: 100%" class="history-table" table-layout="auto" v-loading="loading" @sort-change="handleSortChange">
+                                    <el-table-column prop="crawler_name" label="爬虫类型" width="96">
+                                        <template #default="scope">
+                                            <el-tag :type="getCrawlerType(scope.row.crawler_name || scope.row.crawler_type)">
+                                                {{ getCrawlerShortName(scope.row.crawler_name || scope.row.crawler_type) }}
+                                            </el-tag>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="start_time" label="开始时间" width="150" sortable>
+                                        <template #default="scope">
+                                            <span :class="{ 'running-time': scope.row.status === 'running' }">
+                                                {{ formatTime(scope.row.start_time) }}
+                                            </span>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="end_time" label="结束时间" width="150" sortable>
+                                        <template #default="scope">
+                                            <span v-if="scope.row.status === 'running'" class="status-running">
+                                                运行中...
+                                            </span>
+                                            <span v-else>{{ scope.row.end_time ? formatTime(scope.row.end_time) : '-' }}</span>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="status" label="状态" width="80">
+                                        <template #default="scope">
+                                            <el-tag :type="getStatusType(scope.row.status)">
+                                                {{ getStatusText(scope.row.status) }}
+                                            </el-tag>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="summary" label="执行结果" width="280">
+                                        <template #default="scope">
+                                            <el-tooltip
+                                                :disabled="!hasHistoryExtraInfo(scope.row)"
+                                                placement="top-start"
+                                                effect="dark"
+                                                :show-after="200"
+                                            >
+                                                <template #content>
+                                                    <div class="history-tooltip-content">
+                                                        <div v-for="line in getHistoryExtraInfo(scope.row)" :key="line" class="history-tooltip-line">
+                                                            {{ line }}
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <span class="history-summary-text" :class="{ 'is-hoverable': hasHistoryExtraInfo(scope.row) }">
+                                                    {{ getHistorySummary(scope.row) }}
+                                                </span>
+                                            </el-tooltip>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column label="操作" width="180">
+                                        <template #default="scope">
+                                            <div class="history-actions">
+                                                <el-button 
+                                                    v-if="scope.row.status === 'running'" 
+                                                    type="danger" 
+                                                    size="small"
+                                                    @click="stopCrawler(scope.row)"
+                                                >
+                                                    停止
+                                                </el-button>
+                                                <el-button type="primary" size="small" @click="reuseParams(scope.row)">
+                                                    加载参数
+                                                </el-button>
+                                                <el-button v-if="scope.row.log_filename" type="info" size="small" @click="viewHistoryLog(scope.row)">
+                                                    查看日志
+                                                </el-button>
+                                                <el-button type="danger" size="small" @click="deleteHistory(scope.row)">
+                                                    删除记录
+                                                </el-button>
+                                            </div>
+                                        </template>
+                                    </el-table-column>
+                                </el-table>
+                                <el-pagination
+                                    v-model:current-page="pagination.currentPage"
+                                    v-model:page-size="pagination.pageSize"
+                                    :page-sizes="[5, 10, 20, 50, 100]"
+                                    :total="filteredHistory.length"
+                                    layout="total, sizes, prev, pager, next"
+                                    class="pagination"
+                                ></el-pagination>
+                            </el-card>
+                        </el-col>
+                    </el-row>
+                </div>
+
+                <!-- weibo-crawler 页面 -->
+                <div v-if="activeMenu === 'weibo-crawler'" class="page-content">
+                    <el-card>
+                        <template #header>
+                            <div class="card-header">
+                                <span>weibo-crawler 配置</span>
+                                <div>
+                                    <el-button @click="loadLastParams('weibo-crawler')">加载上次参数</el-button>
+                                    <el-button 
+                                        :type="runningCrawlers['weibo-crawler'] ? 'primary' : 'success'"
+                                        @click="startCrawler('weibo-crawler')"
+                                        :class="{'is-spinning': runningCrawlers['weibo-crawler']}"
+                                    >
+                                        <el-icon class="is-loading" v-if="runningCrawlers['weibo-crawler']"><Loading></Loading></el-icon>
+                                        {{ runningCrawlers['weibo-crawler'] ? '运行中' : '开始运行' }}
+                                    </el-button>
+                                </div>
+                            </div>
+                        </template>
+                        <el-form :model="crawlerConfig" label-width="200px">
+
+                            <!-- ===== 基本爬取配置 ===== -->
+                            <el-divider>基本爬取配置</el-divider>
+
+                            <el-form-item label="用户ID列表">
+                                <el-input
+                                    v-model="crawlerConfig['crawler-user_id_list']"
+                                    type="textarea"
+                                    :rows="3"
+                                    placeholder="每行一个用户ID，如：1669879400"
+                                ></el-input>
+                                <div style="color:#909399;font-size:12px;margin-top:4px;">支持多用户博文信息爬取，每行填写一个用户ID</div>
+                            </el-form-item>
+
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-only_crawl_original']">只爬原创微博</el-checkbox>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">开启=仅爬原创，关闭=原创+转发</span>
+                            </el-form-item>
+
+                            <el-form-item label="关键词过滤">
+                                <el-input
+                                    v-model="crawlerConfig['crawler-query_list']"
+                                    placeholder="多个关键词用逗号分隔，为空则爬全部，如：梦想,希望（需填写 Cookie）"
+                                ></el-input>
+                            </el-form-item>
+
+                            <el-form-item label="起始日期">
+                                <el-date-picker
+                                    v-model="crawlerConfig['crawler-since_date']"
+                                    type="date"
+                                    placeholder="选择起始日期"
+                                    value-format="YYYY-MM-DD"
+                                ></el-date-picker>
+                            </el-form-item>
+
+                            <el-form-item label="结束日期">
+                                <el-date-picker
+                                    v-model="crawlerConfig['crawler-end_date']"
+                                    type="date"
+                                    placeholder="选择结束日期（可选）"
+                                    value-format="YYYY-MM-DD"
+                                ></el-date-picker>
+                            </el-form-item>
+
+                            <el-form-item label="起始页">
+                                <el-input-number v-model="crawlerConfig['crawler-start_page']" :min="1" :max="9999"></el-input-number>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">默认1，断点续爬时使用</span>
+                            </el-form-item>
+
+                            <el-form-item label="每页微博数">
+                                <el-input-number v-model="crawlerConfig['crawler-page_weibo_count']" :min="1" :max="100"></el-input-number>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">默认20，最大100</span>
+                            </el-form-item>
+
+                            <!-- ===== 输出配置 ===== -->
+                            <el-divider>输出配置</el-divider>
+
+                            <el-form-item label="输出选项">
+                                <el-checkbox v-model="crawlerConfig['crawler-write_mode_csv']">CSV</el-checkbox>
+                                <el-checkbox v-model="crawlerConfig['crawler-write_mode_json']">JSON</el-checkbox>
+                                <el-checkbox v-model="crawlerConfig['crawler-write_mode_markdown']">Markdown</el-checkbox>
+                                <el-tooltip content="SQLite 未开启，请在全局设置中开启并配置" :disabled="settings.sqlite_enabled" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-write_mode_sqlite']" :disabled="!settings.sqlite_enabled">SQLite</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MySQL 未开启，请在全局设置中开启并配置" :disabled="settings.mysql_enabled" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-write_mode_mysql']" :disabled="!settings.mysql_enabled">MySQL</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MongoDB 未开启，请在全局设置中开启并配置" :disabled="settings.mongo_enabled" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-write_mode_mongo']" :disabled="!settings.mongo_enabled">MongoDB</el-checkbox>
+                                </el-tooltip>
+                            </el-form-item>
+
+                            <el-form-item label="Markdown 分割方式" v-if="crawlerConfig['crawler-write_mode_markdown']">
+                                <el-select v-model="crawlerConfig['crawler-markdown_split_by']" style="width:200px;">
+                                    <el-option label="按月" value="day_by_month"></el-option>
+                                    <el-option label="按年" value="day_by_year"></el-option>
+                                    <el-option label="不分割" value="none"></el-option>
+                                </el-select>
+                            </el-form-item>
+
+                            <el-form-item label="输出目录">
+                                <el-input v-model="crawlerConfig['crawler-output_directory']" placeholder="/app/data/weibo-crawler"></el-input>
+                            </el-form-item>
+
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-user_id_as_folder_name']">以用户ID为目录名</el-checkbox>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">关闭=用昵称命名，开启=用ID命名（多次爬取一致性更好）</span>
+                            </el-form-item>
+
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-remove_html_tag']">移除 HTML 标签</el-checkbox>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">开启后正文中 HTML 标签将被清除</span>
+                            </el-form-item>
+
+                            <!-- ===== 图片/视频下载 ===== -->
+                            <el-divider>图片 / 视频下载</el-divider>
+
+                            <el-form-item label="原创微博">
+                                <el-checkbox v-model="crawlerConfig['crawler-original_pic_download']">图片</el-checkbox>
+                                <el-checkbox v-model="crawlerConfig['crawler-original_video_download']">视频</el-checkbox>
+                                <el-checkbox v-model="crawlerConfig['crawler-original_live_photo_download']">Live Photo 视频</el-checkbox>
+                                <el-checkbox v-model="crawlerConfig['crawler-avatar_download']">下载用户头像</el-checkbox>
+                            </el-form-item>
+                            <el-form-item label="转发微博">
+                                <el-tooltip :content="crawlerConfig['crawler-only_crawl_original'] ? '仅爬原创模式下不可用' : '仅在原创+转发模式下生效'" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-retweet_pic_download']" :disabled="crawlerConfig['crawler-only_crawl_original']">图片</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip :content="crawlerConfig['crawler-only_crawl_original'] ? '仅爬原创模式下不可用' : '仅在原创+转发模式下生效'" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-retweet_video_download']" :disabled="crawlerConfig['crawler-only_crawl_original']">视频</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip :content="crawlerConfig['crawler-only_crawl_original'] ? '仅爬原创模式下不可用' : '仅在原创+转发模式下生效'" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-retweet_live_photo_download']" :disabled="crawlerConfig['crawler-only_crawl_original']">Live Photo 视频</el-checkbox>
+                                </el-tooltip>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-write_time_in_exif']">将发布时间写入 EXIF</el-checkbox>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">将 created_time 写入 jpg/jpeg 的 EXIF 信息</span>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-change_file_time']">修改文件时间戳</el-checkbox>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">将下载文件的修改时间改为微博发布时间</span>
+                            </el-form-item>
+
+                            <!-- ===== 评论与转发下载（仅 SQLite 模式） ===== -->
+                            <el-divider>SQLite 模式额外功能设置</el-divider>
+
+                            <el-form-item>
+                                <el-tooltip content="请先在输出选项中勾选 SQLite" :disabled="crawlerConfig['crawler-write_mode_sqlite']" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-store_binary_in_sqlite']" :disabled="!crawlerConfig['crawler-write_mode_sqlite']">SQLite 存储二进制数据</el-checkbox>
+                                </el-tooltip>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">开启后将图片/视频二进制数据存入 SQLite（连接信息请在全局设置中配置）</span>
+                            </el-form-item>
+
+                            <el-form-item>
+                                <el-tooltip content="请先在输出选项中勾选 SQLite" :disabled="crawlerConfig['crawler-write_mode_sqlite']" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-download_comment']" :disabled="!crawlerConfig['crawler-write_mode_sqlite']">下载评论</el-checkbox>
+                                </el-tooltip>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">下载每条微博下的一级评论</span>
+                            </el-form-item>
+                            <el-form-item label="评论最大下载数">
+                                <el-input-number v-model="crawlerConfig['crawler-comment_max_download_count']" :min="1" :max="10000" :disabled="!crawlerConfig['crawler-download_comment'] || !crawlerConfig['crawler-write_mode_sqlite']"></el-input-number>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-comment_pic_download']" :disabled="!crawlerConfig['crawler-download_comment'] || !crawlerConfig['crawler-write_mode_sqlite']">下载评论图片</el-checkbox>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-tooltip content="请先在输出选项中勾选 SQLite" :disabled="crawlerConfig['crawler-write_mode_sqlite']" placement="top">
+                                    <el-checkbox v-model="crawlerConfig['crawler-download_repost']" :disabled="!crawlerConfig['crawler-write_mode_sqlite']">下载转发</el-checkbox>
+                                </el-tooltip>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">下载每条微博下的转发记录</span>
+                            </el-form-item>
+                            <el-form-item label="转发最大下载数">
+                                <el-input-number v-model="crawlerConfig['crawler-repost_max_download_count']" :min="1" :max="10000" :disabled="!crawlerConfig['crawler-download_repost'] || !crawlerConfig['crawler-write_mode_sqlite']"></el-input-number>
+                            </el-form-item>
+
+                            <!-- ===== 反封禁配置 ===== -->
+                            <el-divider>反封禁配置</el-divider>
+
+                            <el-form-item>
+                                <el-checkbox v-model="crawlerConfig['crawler-anti_ban_enabled']">启用反封禁</el-checkbox>
+                            </el-form-item>
+                            <el-form-item label="单次会话最大微博数">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_max_weibo_per_session']" :min="10" :max="5000"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="批次大小">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_batch_size']" :min="1" :max="500"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="批次间延迟(秒)">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_batch_delay']" :min="0" :max="3600"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="请求最小延迟(秒)">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_request_delay_min']" :min="0" :max="300" :step="1"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="请求最大延迟(秒)">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_request_delay_max']" :min="0" :max="300" :step="1"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="最长会话时间(秒)">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_max_session_time']" :min="60" :max="86400"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="最大 API 错误次数">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_max_api_errors']" :min="1" :max="100"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="休息最短时间(秒)">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_rest_time_min']" :min="0" :max="7200"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="随机休息概率">
+                                <el-input-number v-model="crawlerConfig['crawler-anti_ban_random_rest_probability']" :min="0" :max="1" :step="0.001" :precision="3"></el-input-number>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">0~1 之间，如 0.01 表示 1%</span>
+                            </el-form-item>
+
+                        </el-form>
+                    </el-card>
+                </div>
+
+                <!-- weibo-follow 页面 -->
+                <div v-if="activeMenu === 'weibo-follow'" class="page-content">
+                    <el-card>
+                        <template #header>
+                            <div class="card-header">
+                                <span>weibo-follow 配置</span>
+                                <div>
+                                    <el-button @click="loadLastParams('weibo-follow')">加载上次参数</el-button>
+                                    <el-button 
+                                        :type="runningCrawlers['weibo-follow'] ? 'primary' : 'success'"
+                                        @click="startCrawler('weibo-follow')"
+                                    >
+                                        <span v-if="runningCrawlers['weibo-follow']" class="spin-icon"><el-icon><Loading></Loading></el-icon></span>
+                                        {{ runningCrawlers['weibo-follow'] ? '运行中' : '开始运行' }}
+                                    </el-button>
+                                </div>
+                            </div>
+                        </template>
+                        <el-form :model="followConfig" label-width="180px">
+                            <el-form-item label="用户ID列表">
+                                <el-input 
+                                    v-model="followConfig['follow-user_id_list']" 
+                                    type="textarea" 
+                                    :rows="10"
+                                    placeholder="每行一个用户ID，如：1669879400"
+                                ></el-input>
+                                <div style="color:#909399;font-size:12px;margin-top:4px;">支持多用户关注列表爬取，每行填写一个用户ID</div>
+                            </el-form-item>
+                            <el-divider>数据库输出（可选）</el-divider>
+                            <el-form-item label="输出选项">
+                                <el-tooltip content="SQLite 未开启，请在全局设置中开启并配置" :disabled="settings.sqlite_enabled" placement="top">
+                                    <el-checkbox v-model="followConfig['follow-use_sqlite']" :disabled="!settings.sqlite_enabled">SQLite</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MySQL 未开启，请在全局设置中开启并配置" :disabled="settings.mysql_enabled" placement="top">
+                                    <el-checkbox v-model="followConfig['follow-use_mysql']" :disabled="!settings.mysql_enabled">MySQL</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MongoDB 未开启，请在全局设置中开启并配置" :disabled="settings.mongo_enabled" placement="top">
+                                    <el-checkbox v-model="followConfig['follow-use_mongo']" :disabled="!settings.mongo_enabled">MongoDB</el-checkbox>
+                                </el-tooltip>
+                            </el-form-item>
+                        </el-form>
+                    </el-card>
+                </div>
+
+                <!-- weibo-search 页面 -->
+                <div v-if="activeMenu === 'weibo-search'" class="page-content">
+                    <el-card>
+                        <template #header>
+                            <div class="card-header">
+                                <span>weibo-search 配置</span>
+                                <div>
+                                    <el-button @click="loadLastParams('weibo-search')">加载上次参数</el-button>
+                                    <el-button 
+                                        :type="runningCrawlers['weibo-search'] ? 'primary' : 'success'"
+                                        @click="startCrawler('weibo-search')"
+                                    >
+                                        <span v-if="runningCrawlers['weibo-search']" class="spin-icon"><el-icon><Loading></Loading></el-icon></span>
+                                        {{ runningCrawlers['weibo-search'] ? '运行中' : '开始运行' }}
+                                    </el-button>
+                                </div>
+                            </div>
+                        </template>
+                        <el-form :model="searchConfig" label-width="180px">
+                            <el-form-item label="关键词">
+                                <el-input v-model="searchConfig['search-keyword']" placeholder="输入搜索关键词，支持#话题#"></el-input>
+                            </el-form-item>
+                            <el-form-item label="起始日期">
+                                <el-date-picker v-model="searchConfig['search-start_time']" type="date" placeholder="选择日期" value-format="YYYY-MM-DD"></el-date-picker>
+                            </el-form-item>
+                            <el-form-item label="结束日期">
+                                <el-date-picker v-model="searchConfig['search-end_time']" type="date" placeholder="选择日期" value-format="YYYY-MM-DD"></el-date-picker>
+                            </el-form-item>
+                            <el-form-item label="微博类型">
+                                <el-select v-model="searchConfig['search-search_type']">
+                                    <el-option label="全部微博 (0)" value="0"></el-option>
+                                    <el-option label="原创微博 (1)" value="1"></el-option>
+                                    <el-option label="热门微博 (2)" value="2"></el-option>
+                                    <el-option label="关注人微博 (3)" value="3"></el-option>
+                                    <el-option label="认证用户微博 (4)" value="4"></el-option>
+                                    <el-option label="媒体微博 (5)" value="5"></el-option>
+                                    <el-option label="观点微博 (6)" value="6"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="包含内容">
+                                <el-select v-model="searchConfig['search-filter_type']">
+                                    <el-option label="不筛选 (0)" value="0"></el-option>
+                                    <el-option label="包含图片 (1)" value="1"></el-option>
+                                    <el-option label="包含视频 (2)" value="2"></el-option>
+                                    <el-option label="包含音乐 (3)" value="3"></el-option>
+                                    <el-option label="包含短链接 (4)" value="4"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="地区">
+                                <el-input v-model="searchConfig['search-region']" placeholder="多个地区用逗号分隔，如：北京,上海,广东"></el-input>
+                            </el-form-item>
+                            <el-form-item label="搜索阈值">
+                                <el-input-number v-model="searchConfig['search-further_threshold']" :min="1" :max="50"></el-input-number>
+                                <span style="margin-left: 10px; color: #909399; font-size: 12px;">(40-50，越大越快但可能漏微博)</span>
+                            </el-form-item>
+                            <el-form-item label="结果限制">
+                                <el-input-number v-model="searchConfig['search-limit_result']" :min="0" :max="100000" :step="100"></el-input-number>
+                                <span style="margin-left: 10px; color: #909399; font-size: 12px;">(0为不限制)</span>
+                            </el-form-item>
+                            <el-form-item label="最大页数">
+                                <el-input-number v-model="searchConfig['search-max_pages']" :min="1" :max="1000"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="下载延迟(秒)">
+                                <el-input-number v-model="searchConfig['search-wait_time']" :min="1" :max="60"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="图片存储路径">
+                                <el-input v-model="searchConfig['search-images_store']" placeholder="/app/data/weibo-search/images"></el-input>
+                            </el-form-item>
+                            <el-form-item label="文件存储路径">
+                                <el-input v-model="searchConfig['search-files_store']" placeholder="/app/data/weibo-search/files"></el-input>
+                            </el-form-item>
+                            <el-form-item label="输出选项">
+                                <el-checkbox v-model="searchConfig['search-use_csv']">CSV文件</el-checkbox>
+                                <el-tooltip content="SQLite 未开启，请在全局设置中开启并配置" :disabled="settings.sqlite_enabled" placement="top">
+                                    <el-checkbox v-model="searchConfig['search-use_sqlite']" :disabled="!settings.sqlite_enabled">SQLite</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MySQL 未开启，请在全局设置中开启并配置" :disabled="settings.mysql_enabled" placement="top">
+                                    <el-checkbox v-model="searchConfig['search-use_mysql']" :disabled="!settings.mysql_enabled">MySQL</el-checkbox>
+                                </el-tooltip>
+                                <el-tooltip content="MongoDB 未开启，请在全局设置中开启并配置" :disabled="settings.mongo_enabled" placement="top">
+                                    <el-checkbox v-model="searchConfig['search-use_mongo']" :disabled="!settings.mongo_enabled">MongoDB</el-checkbox>
+                                </el-tooltip>
+                            </el-form-item>
+                            <el-form-item label="下载选项">
+                                <el-checkbox v-model="searchConfig['search-use_images']">下载图片</el-checkbox>
+                                <el-checkbox v-model="searchConfig['search-use_videos']">下载视频</el-checkbox>
+                            </el-form-item>
+                        </el-form>
+                    </el-card>
+                </div>
+
+                <!-- 日志管理页面 -->
+                <div v-if="activeMenu === 'logs'" class="page-content">
+                    <el-card>
+                        <template #header>
+                            <div class="card-header">
+                                <span>日志管理</span>
+                                <div>
+                                    <el-button type="danger" @click="clearAllLogs">清空所有日志</el-button>
+                                </div>
+                            </div>
+                        </template>
+                        <el-table :data="logFiles" style="width: 100%" class="logs-table">
+                            <el-table-column prop="name" label="日志文件" min-width="380">
+                                <template #default="scope">
+                                    <div class="log-filename-cell">{{ scope.row.name }}</div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="size" label="大小" width="120"></el-table-column>
+                            <el-table-column prop="modified" label="修改时间" width="180" sortable>
+                                <template #default="scope">
+                                    <span>{{ formatTime(scope.row.modified) }}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="操作" width="150">
+                                <template #default="scope">
+                                    <el-button type="primary" size="small" @click="viewLog(scope.row)">查看</el-button>
+                                    <el-button type="danger" size="small" @click="deleteLog(scope.row)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-card>
+                </div>
+
+                <!-- 全局设置页面 -->
+                <div v-if="activeMenu === 'settings'" class="page-content">
+                    <el-card>
+                        <template #header>
+                            <div class="card-header">
+                                <span>全局设置</span>
+                                <el-button type="primary" @click="saveSettings">保存设置</el-button>
+                            </div>
+                        </template>
+                        <el-form :model="settings" label-width="180px" style="width:100%">
+                            <el-divider>时区设置</el-divider>
+                            <el-form-item label="时区">
+                                <el-select v-model="settings.timezone" placeholder="选择时区">
+                                    <el-option label="UTC (世界标准时间)" value="UTC"></el-option>
+                                    <el-option label="Asia/Shanghai (北京时间)" value="Asia/Shanghai"></el-option>
+                                    <el-option label="Asia/Tokyo (东京时间)" value="Asia/Tokyo"></el-option>
+                                    <el-option label="Asia/Seoul (首尔时间)" value="Asia/Seoul"></el-option>
+                                    <el-option label="America/New_York (纽约时间)" value="America/New_York"></el-option>
+                                    <el-option label="America/Los_Angeles (洛杉矶时间)" value="America/Los_Angeles"></el-option>
+                                    <el-option label="Europe/London (伦敦时间)" value="Europe/London"></el-option>
+                                    <el-option label="Europe/Paris (巴黎时间)" value="Europe/Paris"></el-option>
+                                </el-select>
+                                <span style="margin-left:10px;color:#909399;font-size:12px;">历史记录将按此时区显示</span>
+                            </el-form-item>
+
+                            <el-divider>Cookie 设置</el-divider>
+                            <el-form-item label="Cookie">
+                                <el-input 
+                                    v-model="settings.cookie" 
+                                    type="textarea" 
+                                    :rows="3"
+                                    placeholder="粘贴微博网页版 Cookie"
+                                    @input="settings.cookie_tested = false; settings.cookie_test_status = ''"
+                                ></el-input>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                                    <el-button type="success" size="small" @click="testCookie" :loading="testing.cookie">测试 Cookie</el-button>
+                                    <el-tag v-if="settings.cookie_test_status === 'success'" type="success" size="small">已验证</el-tag>
+                                    <el-tag v-else-if="settings.cookie_test_status === 'fail'" type="danger" size="small">验证失败</el-tag>
+                                    <el-tag v-else-if="settings.cookie" type="warning" size="small">未验证</el-tag>
+                                </div>
+                            </el-form-item>
+
+                            <el-divider>MySQL 设置</el-divider>
+                            <el-form-item label="启用 MySQL">
+                                <el-switch v-model="settings.mysql_enabled" @change="settings.mysql_tested = false; settings.mysql_test_status = ''"></el-switch>
+                                <el-checkbox v-model="settings.mysql_default" style="margin-left:20px;">爬取时默认开启该数据库写入</el-checkbox>
+                            </el-form-item>
+                            <template v-if="settings.mysql_enabled">
+                                <el-form-item label="主机">
+                                    <el-input v-model="settings.mysql_host" placeholder="localhost"></el-input>
+                                </el-form-item>
+                                <el-form-item label="端口">
+                                    <el-input-number v-model="settings.mysql_port" :min="1" :max="65535"></el-input>
+                                </el-form-item>
+                                <el-form-item label="数据库">
+                                    <el-input v-model="settings.mysql_database" placeholder="weibo"></el-input>
+                                </el-form-item>
+                                <el-form-item label="用户名">
+                                    <el-input v-model="settings.mysql_user" placeholder="root"></el-input>
+                                </el-form-item>
+                                <el-form-item label="密码">
+                                    <el-input v-model="settings.mysql_password" type="password"></el-input>
+                                    <el-button type="success" size="small" @click="testMysql" :loading="testing.mysql">测试连接</el-button>
+                                    <el-tag v-if="settings.mysql_test_status === 'success'" type="success" size="small" style="margin-left:8px;">已连接</el-tag>
+                                    <el-tag v-else-if="settings.mysql_test_status === 'fail'" type="danger" size="small" style="margin-left:8px;">连接失败</el-tag>
+                                    <el-tag v-else type="warning" size="small" style="margin-left:8px;">未测试</el-tag>
+                                </el-form-item>
+                            </template>
+
+                            <el-divider>MongoDB 设置</el-divider>
+                            <el-form-item label="启用 MongoDB">
+                                <el-switch v-model="settings.mongo_enabled" @change="settings.mongo_tested = false; settings.mongo_test_status = ''"></el-switch>
+                                <el-checkbox v-model="settings.mongo_default" style="margin-left:20px;">爬取时默认开启该数据库写入</el-checkbox>
+                            </el-form-item>
+                            <template v-if="settings.mongo_enabled">
+                                <el-form-item label="URI">
+                                    <el-input v-model="settings.mongo_uri" placeholder="mongodb://weibo-mongo:27017/"></el-input>
+                                    <el-button type="success" size="small" @click="testMongo" :loading="testing.mongo">测试连接</el-button>
+                                    <el-tag v-if="settings.mongo_test_status === 'success'" type="success" size="small" style="margin-left:8px;">已连接</el-tag>
+                                    <el-tag v-else-if="settings.mongo_test_status === 'fail'" type="danger" size="small" style="margin-left:8px;">连接失败</el-tag>
+                                    <el-tag v-else type="warning" size="small" style="margin-left:8px;">未测试</el-tag>
+                                </el-form-item>
+                            </template>
+
+                            <el-divider>SQLite 设置</el-divider>
+                            <el-form-item label="启用 SQLite">
+                                <el-switch v-model="settings.sqlite_enabled" @change="settings.sqlite_tested = false; settings.sqlite_test_status = ''"></el-switch>
+                                <el-checkbox v-model="settings.sqlite_default" style="margin-left:20px;">爬取时默认开启该数据库写入</el-checkbox>
+                            </el-form-item>
+                            <template v-if="settings.sqlite_enabled">
+                                <el-form-item label="数据库文件路径">
+                                    <el-input v-model="settings.sqlite_db_path" placeholder="/app/data/sqlite/weibodata.db"></el-input>
+                                    <el-button type="success" size="small" @click="testSqlite" :loading="testing.sqlite">测试路径</el-button>
+                                    <el-tag v-if="settings.sqlite_test_status === 'success'" type="success" size="small" style="margin-left:8px;">路径可用</el-tag>
+                                    <el-tag v-else-if="settings.sqlite_test_status === 'fail'" type="danger" size="small" style="margin-left:8px;">路径不可用</el-tag>
+                                    <el-tag v-else type="warning" size="small" style="margin-left:8px;">未测试</el-tag>
+                                </el-form-item>
+                            </template>
+
+                            <el-divider>日志设置</el-divider>
+                            <el-form-item label="日志级别">
+                                <el-select v-model="settings.log_level">
+                                    <el-option label="DEBUG" value="DEBUG"></el-option>
+                                    <el-option label="INFO" value="INFO"></el-option>
+                                    <el-option label="WARNING" value="WARNING"></el-option>
+                                    <el-option label="ERROR" value="ERROR"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="保留最近条数">
+                                <el-input-number v-model="settings.log_keep_count" :min="10" :max="1000" ></el-input>
+                            </el-form-item>
+                        </el-form>
+                    </el-card>
+                </div>
+            </el-main>
+        </el-container>
+
+        <!-- 日志查看对话框 -->
+        <el-dialog v-model="logDialog.visible" title="日志内容" width="80%" top="5vh">
+            <pre class="log-content">{{ logDialog.content }}</pre>
+            <template #footer>
+                <el-button @click="logDialog.visible = false">关闭</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 确认对话框 -->
+        <el-dialog v-model="confirmDialog.visible" title="确认" width="400px">
+            <p>{{ confirmDialog.message }}</p>
+            <template #footer>
+                <el-button @click="confirmDialog.visible = false">取消</el-button>
+                <el-button type="primary" @click="confirmDialog.onConfirm">确认</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

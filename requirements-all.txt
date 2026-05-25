@@ -1,0 +1,27 @@
+# ============================================================
+# 合并所有微博爬虫的依赖
+# ============================================================
+
+# 统一 requests 版本
+requests>=2.33.0
+
+# weibo-crawler 依赖
+pymongo
+PyMySQL==1.1.1
+schedule==1.2.1
+json5>=0.9.25
+piexif~=1.1.3
+Flask==3.1.3
+tqdm>=4.66.0
+
+# weibo-follow 依赖
+# (已包含在上方)
+
+# weibo-search 依赖
+Pillow>=8.1.1
+scrapy>=2.5.0
+
+# Harvester 新增依赖
+python-dotenv>=1.0.0
+cryptography>=41.0.0  # 用于 MySQL 8.0 认证
+pytz>=2024.1  # 时区处理

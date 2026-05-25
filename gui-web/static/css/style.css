@@ -1,0 +1,298 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f5f7fa;
+}
+
+/* 主容器 */
+.main-container {
+    min-height: 100vh;
+}
+
+/* 顶部导航 */
+.app-header {
+    display: flex;
+    align-items: center;
+    background-color: #409EFF;
+    padding: 0 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    margin-right: 40px;
+    flex-shrink: 0;
+}
+
+.logo .el-icon {
+    margin-right: 10px;
+}
+
+.top-menu {
+    flex: 1;
+    border-bottom: none;
+}
+
+/* 主内容区 */
+.main-content {
+    padding: 20px;
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+.page-content {
+    animation: fadeIn 0.3s ease;
+    min-width: 600px;
+
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 功能卡片 */
+.feature-cards {
+    margin-top: 20px;
+}
+
+.feature-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-content {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.card-content .el-icon {
+    margin-bottom: 15px;
+}
+
+.card-content h3 {
+    margin: 10px 0;
+    color: #303133;
+}
+
+.card-content p {
+    color: #909399;
+    font-size: 14px;
+}
+
+/* 历史记录区域 */
+.history-section {
+    margin-top: 30px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+
+/* 状态样式 */
+.status-running {
+    color: #409EFF;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.running-time {
+    color: #409EFF;
+    font-weight: bold;
+}
+
+/* 历史记录表格 */
+.history-table .el-table__body-wrapper,
+.history-table .el-scrollbar__wrap {
+    overflow-x: hidden !important;
+}
+
+.history-table .el-scrollbar__bar.is-horizontal {
+    display: none !important;
+}
+
+.history-table .el-table__cell {
+    vertical-align: top;
+}
+
+.history-table .el-table__cell .cell {
+    padding-left: 8px;
+    padding-right: 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.history-summary-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.history-summary-text.is-hoverable {
+    cursor: help;
+}
+
+.history-tooltip-content {
+    max-width: 420px;
+}
+
+.history-tooltip-line {
+    line-height: 1.6;
+    word-break: break-all;
+}
+
+.history-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.history-actions .el-button + .el-button {
+    margin-left: 0;
+}
+
+/* 分页 */
+.pagination {
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+/* 日志内容 */
+.log-content {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 4px;
+    max-height: 60vh;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.log-filename-cell {
+    line-height: 1.4;
+    white-space: normal;
+    word-break: break-all;
+}
+
+/* 表单样式 */
+.el-form {
+    width: 100%;
+    max-width: 1200px;
+}
+
+.el-divider {
+    margin: 30px 0;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .app-header {
+        padding: 10px;
+    }
+    
+    .logo {
+        margin-right: 0;
+    }
+    
+    .top-menu {
+        width: 100%;
+    }
+    
+    .el-col-8 {
+        width: 100%;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* 加载动画 - 让图标旋转而不是按钮 */
+.spin-icon .el-icon {
+    animation: rotating 1s linear infinite;
+    display: inline-block;
+}
+
+.spin-icon + span {
+    margin-left: 4px;
+}
+
+@keyframes rotating {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 按钮组 */
+.el-button + .el-button {
+    margin-left: 10px;
+}
+
+/* 表格样式优化 */
+.el-table {
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* 对话框 */
+.el-dialog__body {
+    padding: 20px;
+}
+
+/* 标签样式 */
+.el-tag {
+    border-radius: 4px;
+}
+
+/* ========================================
+   下拉菜单样式 - 清除所有自定义
+   ======================================== */
+
+/* 下拉菜单展开时 */
+.el-select .el-input__wrapper {
+    box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.el-select .el-input__wrapper:hover {
+    box-shadow: 0 0 0 1px #409eff inset;
+}
+
+.el-select .el-input__wrapper.is-focus {
+    box-shadow: 0 0 0 1px #409eff inset !important;
+}

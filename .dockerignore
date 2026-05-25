@@ -1,0 +1,115 @@
+# ============================================================
+# WeiboHarvester — .dockerignore
+# Docker 镜像构建上下文忽略规则
+# 目的：减小镜像体积，加速构建，避免敏感文件进入镜像
+# ============================================================
+
+# ── Git 版本控制 ───────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── 运行时目录（容器内由 Docker Volume 管理）───────────────────
+# 这些目录通过 docker-compose.yml 的 volumes 挂载，不需要打包进镜像
+/data/
+/logs/
+/temp/
+
+# ── Python 缓存 ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+.eggs/
+*.egg
+
+# ── 构建产物 ───────────────────────────────────────────────────
+dist/
+build/
+*.whl
+*.tar
+*.tar.gz
+*.zip
+
+# ── 虚拟环境 ───────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+*.env
+
+# ── IDE / 编辑器配置 ───────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ── 测试 / 覆盖率 ─────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ── 文档（不需要进入镜像）───────────────────────────────────────
+# 如果镜像不需要文档，可以注释掉；如果需要则保留
+# document/
+README.md
+README*.md
+*.md
+!requirements*.txt
+
+# ── 开发工具（不需要进入生产镜像）──────────────────────────────
+# GUI 源码（生产环境使用构建后的静态文件）
+gui-web/src/
+gui-web/node_modules/
+gui-web/.git/
+gui-web/.vscode/
+gui-web/.env
+gui-web/*.log
+
+# CodeBuddy AI 助手配置
+.codebuddy/
+
+# ── 上游原始代码（不需要进入镜像）───────────────────────────────
+# 镜像使用 tools/dataabc/ 下的适配后代码
+tools/dataabc/original/
+
+# ── SQLite 数据库（运行时数据）─────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+data/sqlite/
+
+# ── 杂项 ───────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ── 压缩包 ────────────────────────────────────────────────────
+*.zip
+tools/*.zip
+tools/dataabc/*.zip
+
+# ── 空目录占位符（可选保留或删除）──────────────────────────────
+# 如果不需要空目录占位符，可以忽略
+**/.gitkeep

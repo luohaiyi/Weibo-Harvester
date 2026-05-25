@@ -1,0 +1,37 @@
+# ============================================================
+# gui-web/.gitignore
+# GUI Web 后端目录的 Python 忽略规则
+# ============================================================
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+
+# Flask 会话 / 临时文件
+flask_session/
+*.session
+
+# 运行时配置（用户生成的）
+runtime-configs/
+settings.json
+
+# 日志
+*.log
+
+# 环境变量
+.env
+.env.*
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 上游源码（如果有备份）
+*.zip
